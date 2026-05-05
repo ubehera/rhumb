@@ -173,10 +173,14 @@ def main() -> int:
     tasks_summary = {}
     drift_warnings: list[str] = []
     for task_name, results in raw.get("results", {}).items():
-        # For generative tasks, exact_match is the most common principal metric;
-        # acc and pass@1 also appear depending on the task. Same fallback logic.
+        # Metric priority for chat-completions: prefer flexible-extract over
+        # strict-match. Chat models emit prose answers ("Janet makes $18..."),
+        # not the strict `#### N` format that GSM8K's fewshot uses, so
+        # strict-match silently rejects almost everything. flexible-extract
+        # regexes the number out of prose. See:
+        # ~/notes/learnings/2026-05-05-gsm8k-strict-vs-flex-metric-trap.md
         principal = None
-        for key in ("exact_match,strict-match", "exact_match,flexible-extract",
+        for key in ("exact_match,flexible-extract", "exact_match,strict-match",
                     "exact_match,none", "acc_norm,none", "acc,none", "pass@1,none"):
             if key in results and isinstance(results[key], (int, float)):
                 principal = key
