@@ -148,6 +148,18 @@ def main() -> int:
     if suite.get("limit") is not None:
         cli.extend(["--limit", str(suite["limit"])])
 
+    # Suite-level gen_kwargs (max_gen_toks, temperature, etc.) flow into
+    # lm-eval's --gen_kwargs, which is space-separated key=val args parsed
+    # via ast.literal_eval. Critical for thinking-on runs: GSM8K's default
+    # max_gen_toks (~256) cuts Qwen 3-family thinking blocks off mid-stream
+    # before they reach the answer. reasoning.yaml sets max_gen_toks=4096.
+    gen_kwargs = suite.get("gen_kwargs") or {}
+    if gen_kwargs:
+        def _fmt(v):
+            return repr(v) if isinstance(v, str) else str(v)
+        cli.append("--gen_kwargs")
+        cli.extend(f"{k}={_fmt(v)}" for k, v in gen_kwargs.items())
+
     print(f"[quality-chat] running: {' '.join(cli)}", flush=True)
 
     sub_env = {**os.environ, "PYTHONUNBUFFERED": "1"}

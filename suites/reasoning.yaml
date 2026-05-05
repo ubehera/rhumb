@@ -24,6 +24,13 @@ quality:
   num_fewshot: 5
   limit: 200                 # smaller than standard.yaml's 500: thinking-on emits 5-10x more tokens, slowing wall
   num_concurrent: 16         # smaller too: each request is longer, less benefit from high concurrency
+  # gen_kwargs flow into lm-eval's --gen_kwargs and propagate to the chat-completions
+  # request body. max_gen_toks=4096 lifts the default ~256 cap that was truncating
+  # Qwen 3-family thinking blocks mid-stream (88% of Qwen 3 responses got cut off
+  # before reaching </think> + the #### N answer at the default limit). 4096 fits
+  # any GSM8K reasoning trace with comfortable headroom.
+  gen_kwargs:
+    max_gen_toks: 4096
 
 # Speed bench is shared with the standard runner — use suite=standard for speed.
 speed:
