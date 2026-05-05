@@ -1,0 +1,17 @@
+[project]
+name = "edgexpert-eval-suite"
+version = "0.1.0"
+description = "Quality + speed benchmark suite for local LLMs on the EdgeXpert (vLLM-served)"
+requires-python = ">=3.12"
+dependencies = [
+    "lm-eval[api]>=0.4.5",  # EleutherAI lm-evaluation-harness; [api] extra adds tenacity etc. for OpenAI-compatible endpoints
+    "transformers",         # required by lm-eval for tokenizer access (even when targeting an HTTP model)
+    "httpx>=0.28",          # async HTTP client for the speed bench
+    "pyyaml",               # config files
+    "rich",                 # diff.py table rendering
+    "tiktoken",             # rough token counting
+    "openai>=1.50",         # OpenAI client (used by lm-eval too)
+]
+
+[tool.uv]
+package = false

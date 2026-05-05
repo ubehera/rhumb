@@ -1,0 +1,29 @@
+# Eval results: large + regenerable. Don't track.
+results/
+
+# Python tooling
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Detached run artifacts (also covered by results/ but defensive)
+*.pid
+*.log
+
+# Local secrets — never commit. Endpoint API keys live OUTSIDE this repo
+# (in ~/projects/vllm-server/vllm.env or ~/.localbench/<endpoint>.env)
+# but block any *.env that ends up here by accident.
+*.env

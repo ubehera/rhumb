@@ -1,0 +1,18 @@
+# Full suite — multi-hour run. For headline numbers in posts.
+
+quality:
+  tasks:
+    - mmlu
+    - gsm8k
+    - hellaswag
+    - truthfulqa_mc2
+    - arc_challenge
+    - ifeval                # instruction following (text-gen, uses chat template)
+  num_fewshot: 5
+  limit: null               # all samples
+  num_concurrent: 16
+
+speed:
+  num_prompts: 200
+  output_tokens: 256
+  concurrency_levels: [1, 4, 8, 16, 32]

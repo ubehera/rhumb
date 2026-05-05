@@ -1,0 +1,23 @@
+# Quick smoke suite — targets ~15-25 minutes per model on a GB10 box.
+# For development, sanity checks, "did this fine-tune help at all" checks.
+#
+# Note: full MMLU (57 subjects x 100 samples = 5700 questions, each expanded
+# into ~4 logprob queries) takes 4-5 hours on Qwen 32B AWQ. We use a curated
+# 4-subject subset that touches reasoning, math, security, and ML-domain
+# knowledge — meaningful signal without the wall-time tax.
+quality:
+  tasks:
+    - mmlu_high_school_mathematics  # multi-step reasoning, numeric
+    - mmlu_machine_learning         # in-domain knowledge
+    - mmlu_logical_fallacies        # reasoning / language understanding
+    - mmlu_computer_security        # technical knowledge
+    - gsm8k                         # generative chain-of-thought math
+    - hellaswag                     # common sense, logprob-scored
+  num_fewshot: 5
+  limit: 100                        # samples per task (per MMLU subject)
+  num_concurrent: 32                # huge KV-cache headroom on 121 GiB box
+
+speed:
+  num_prompts: 50                   # total prompts to issue
+  output_tokens: 128                # max_tokens per response
+  concurrency_levels: [1, 4, 8]

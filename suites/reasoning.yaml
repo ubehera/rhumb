@@ -1,0 +1,32 @@
+# Reasoning suite — generative chain-of-thought tasks where thinking-mode helps.
+# Routed to the chat-completions runner (quality_chat_lm_eval.py) so chat
+# templates apply correctly on instruct/chat models. See
+# notes/learnings/2026-05-05-lm-eval-chat-template-limitation.md for why.
+#
+# This is the half of rhumb that measures *reasoning under generation*
+# rather than *knowledge under loglikelihood scoring*. Pair with standard.yaml
+# or standard_q3.yaml for a complete picture.
+#
+# Wall time estimate: ~1-2 hours per model with thinking ON (longer outputs).
+# Without thinking: ~30 min.
+
+# Routes this suite to runners/quality_chat_lm_eval.py instead of the default.
+runner: chat_lm_eval
+
+# Default-on for thinking — this suite explicitly tests reasoning-mode
+# performance. CLI --thinking off can override for fair-no-think comparisons.
+force_thinking: true
+
+quality:
+  tasks:
+    - gsm8k                  # grade-school math, 1.3k test problems, 5-shot CoT canonical
+    # Future: hendrycks_math (high-school competition), bbh (Big-Bench Hard generative subset)
+  num_fewshot: 5
+  limit: 200                 # smaller than standard.yaml's 500: thinking-on emits 5-10x more tokens, slowing wall
+  num_concurrent: 16         # smaller too: each request is longer, less benefit from high concurrency
+
+# Speed bench is shared with the standard runner — use suite=standard for speed.
+speed:
+  num_prompts: 50
+  output_tokens: 256
+  concurrency_levels: [1, 4]

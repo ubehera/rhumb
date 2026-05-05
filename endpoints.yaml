@@ -1,0 +1,40 @@
+# Logical endpoint registry. Maps short names to vLLM (OpenAI-compatible)
+# servers + auth config. Used by run.sh + runners when --endpoint <name>
+# is passed. Without that flag, runs use each model's `endpoint:` field
+# from models.yaml (current single-box behavior preserved).
+#
+# Schema per entry:
+#   base_url:    OpenAI-compatible base; runners append /completions or
+#                /chat/completions. Same shape as models.yaml's `endpoint:`.
+#   api_key_env: name of the env var that holds the API key. After resolution
+#                run.sh promotes its value into VLLM_API_KEY (where the
+#                runners read it from).
+#   env_file:    optional file to `set -a; source` before reading api_key_env.
+#                ~ is expanded.
+#   description: free-text label (informational only).
+#
+# When the second box arrives (~2026-05-07 to 2026-05-11):
+#   1. Bring up vLLM on box-b (mirror ~/projects/vllm-server/serve.sh).
+#   2. Update box-b.base_url below to its reachable host:port.
+#   3. Create ~/.localbench/box-b.env with `VLLM_API_KEY_BOX_B=<key>`.
+#   4. Sanity check: ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint box-b
+
+endpoints:
+  local:
+    base_url: http://localhost:8000/v1
+    api_key_env: VLLM_API_KEY
+    env_file: ~/projects/vllm-server/vllm.env
+    description: "Default. Current single-box vLLM (also reachable as 'box-a')."
+
+  box-a:
+    base_url: http://localhost:8000/v1
+    api_key_env: VLLM_API_KEY
+    env_file: ~/projects/vllm-server/vllm.env
+    description: "Primary GB10. Aliased to 'local' until box-b is online — both names exist so future cross-box runs read symmetrically (e.g. `--endpoint box-a` vs `--endpoint box-b`)."
+
+  box-b:
+    # PLACEHOLDERS — update when ConnectX-7 cluster comes online.
+    base_url: http://box-b.local:8000/v1
+    api_key_env: VLLM_API_KEY_BOX_B
+    env_file: ~/.localbench/box-b.env
+    description: "Second GB10. Hardware ETA 2026-05-07 to 2026-05-11. Update base_url + create env_file when ready."

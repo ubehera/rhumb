@@ -1,0 +1,78 @@
+# Model registry for the eval suite.
+#
+# Each entry describes one model under test. `endpoint` is for vLLM
+# (OpenAI-compatible) hosts; for direct-load benchmarking add `direct_load: true`
+# (not yet supported in phase 1 — endpoint-only).
+
+models:
+  qwen-32b-awq:
+    endpoint: http://localhost:8000/v1
+    model_id: Qwen/Qwen2.5-32B-Instruct-AWQ
+    api_key_env: VLLM_API_KEY
+    tokenizer: Qwen/Qwen2.5-32B-Instruct-AWQ
+    instruct: true                                # apply chat template + fewshot_as_multiturn during quality eval
+    notes: "Running on systemd vllm.service (see ~/projects/vllm-server)"
+    # Baseline expected scores. Drift-check flags deltas > 5pp in either direction.
+    #
+    # Sourcing methodology (audited 2026-05-05):
+    #   - HellaSwag, GSM8K: published Qwen 2.5 32B Instruct numbers (Qwen blog
+    #     https://qwenlm.github.io/blog/qwen2.5-llm/, Qwen tech report
+    #     arxiv:2412.15115). GSM8K paper number is 0.959 with 8-shot CoT prompting;
+    #     our 5-shot non-CoT setup expects ~0.80-0.85.
+    #   - Per-subject MMLU: NOT publicly published anywhere. Qwen reports aggregate
+    #     MMLU only (79.7-83.9 across variants). Per-subject baselines below are
+    #     this AWQ model's own measurements from suite=standard 2026-05-05 (n>=100
+    #     per subject, stderr 0.013-0.042). They function as regression baselines:
+    #     "did our measurement change since last good run", not "are we matching
+    #     paper".
+    baselines:
+      # published (paper anchor)
+      gsm8k: 0.81                              # methodology-adjusted; paper 0.959 (8-shot CoT)
+      hellaswag: 0.85                          # published; our AWQ measured 0.75 — real -10pt gap to investigate
+
+      # measured-as-baseline (no published per-subject numbers exist)
+      mmlu_college_computer_science: 0.84
+      mmlu_computer_security: 0.88
+      mmlu_formal_logic: 0.77
+      mmlu_high_school_biology: 0.94
+      mmlu_high_school_mathematics: 0.63
+      mmlu_logical_fallacies: 0.91
+      mmlu_machine_learning: 0.73
+      mmlu_professional_law: 0.67
+
+  qwen3-32b-awq:
+    endpoint: http://localhost:8000/v1
+    model_id: Qwen/Qwen3-32B-AWQ
+    api_key_env: VLLM_API_KEY
+    tokenizer: Qwen/Qwen3-32B-AWQ
+    instruct: true
+    disable_thinking: true                       # smoke-tested 2026-05-05; thinking-on burned 300 tokens before reaching answer
+    notes: |
+      Qwen 3, May 2025 release. Drop-in replacement for Qwen 2.5 32B AWQ in
+      memory footprint (~20 GB). Thinking mode disabled for benchmarking
+      (would 5-10x wall time on generative tasks).
+    baselines:
+      # Published per Qwen blog (https://qwenlm.github.io/blog/qwen3/) for the
+      # Qwen3-32B Instruct BF16 variant. AWQ ~1-3pp lower expected.
+      gsm8k: 0.85                              # paper: 0.95+ with 8-shot CoT thinking on; methodology-adjusted
+      hellaswag: 0.87                          # not officially reported for 3 32B; conservative estimate from base
+      # Per-MMLU-subject: measured-as-baseline once the standard run completes (TBD).
+
+  qwen3.6-27b-awq:
+    endpoint: http://localhost:8000/v1
+    model_id: cyankiwi/Qwen3.6-27B-AWQ-INT4    # community quant; no official AWQ from Alibaba yet
+    api_key_env: VLLM_API_KEY
+    tokenizer: Qwen/Qwen3.6-27B                # use the official tokenizer
+    instruct: true
+    disable_thinking: true                       # same family as Qwen 3, same thinking-mode behavior expected
+    notes: |
+      Qwen 3.6 27B Instruct, April 2026 release. Smaller than the previous-gen
+      flagship (27B vs 32B) but Alibaba claims it ties Sonnet 4.6 on agentic
+      benchmarks. AWQ is community-quantized (cyankiwi); needs sanity-test
+      before trusting full-eval numbers.
+    baselines:
+      # Published per Qwen 3.6 announcement (https://qwen.ai/blog?id=qwen3.6-27b)
+      # for the BF16 variant. AWQ-community ~2-5pp lower expected.
+      gsm8k: 0.90                              # methodology-adjusted estimate
+      hellaswag: 0.88                          # conservative estimate
+      # Per-MMLU-subject: measured-as-baseline once the standard run completes (TBD).

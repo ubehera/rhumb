@@ -1,0 +1,33 @@
+# Variant of standard.yaml for instruct models that need chat-template formatting
+# on every request (Qwen 3, Qwen 3.6, etc).
+#
+# Why this exists: lm-eval-harness's local-completions model honors
+# apply_chat_template=True only for LOGLIKELIHOOD tasks (multi-choice scoring).
+# For generate_until tasks (GSM8K, MATH, IFEval), it sends raw "Question: ...
+# Answer:" text to /v1/completions. Qwen 3 32B AWQ in text-completion mode
+# falls into Quora-style autocomplete and produces gibberish on math tasks.
+# Qwen 2.5 is more robust and gets away with this; Qwen 3+ does not.
+#
+# Long-term fix: add a generate_until path via local-chat-completions. For now
+# this suite drops GSM8K and runs only loglikelihood tasks.
+#
+# Wall time: ~90-120 min on a single GB10 box (no GSM8K generative phase).
+quality:
+  tasks:
+    - mmlu_high_school_mathematics
+    - mmlu_machine_learning
+    - mmlu_logical_fallacies
+    - mmlu_computer_security
+    - mmlu_college_computer_science
+    - mmlu_formal_logic
+    - mmlu_professional_law
+    - mmlu_high_school_biology
+    - hellaswag
+  num_fewshot: 5
+  limit: 500
+  num_concurrent: 32
+
+speed:
+  num_prompts: 100
+  output_tokens: 256
+  concurrency_levels: [1, 4, 8, 16]

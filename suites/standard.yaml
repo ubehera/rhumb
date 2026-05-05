@@ -1,0 +1,36 @@
+# Standard suite — tighter measurement instrument for A/B comparisons.
+# Targets ~2.5 hours per model on a GB10 box.
+#
+# Use this when you want defensible numbers (e.g. quantization comparisons,
+# fine-tune impact, model-vs-model). For "did this work at all" smoke tests
+# use suite=quick instead.
+#
+# Math behind these knobs:
+#   8 MMLU subjects x 500 samples x 4 choices = 16k loglikelihood requests
+#   HellaSwag 500 x 4                          =  2k loglikelihood requests
+#   GSM8K 500 generative                       = 500 generative requests
+#   At ~2.6 req/s sustained                    ≈ 2.5 hours wall time
+#
+# Stderr drops from limit=100's ~0.05 to ~0.022, which is the threshold below
+# which 2-3% AWQ-vs-BF16 deltas become statistically detectable.
+quality:
+  tasks:
+    # MMLU subjects spanning math, reasoning, technical, science, language
+    - mmlu_high_school_mathematics
+    - mmlu_machine_learning
+    - mmlu_logical_fallacies
+    - mmlu_computer_security
+    - mmlu_college_computer_science
+    - mmlu_formal_logic
+    - mmlu_professional_law
+    - mmlu_high_school_biology
+    - gsm8k
+    - hellaswag
+  num_fewshot: 5
+  limit: 500
+  num_concurrent: 32
+
+speed:
+  num_prompts: 100
+  output_tokens: 256
+  concurrency_levels: [1, 4, 8, 16]
