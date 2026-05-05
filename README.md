@@ -64,7 +64,7 @@ When you have two boxes, this enables data-parallel cross-model comparisons: e.g
 
 - Model serving — bring your own vLLM (or any OpenAI-compatible endpoint).
 - Training / fine-tuning.
-- Anything agentic — see [`localbench`](https://github.com/ubehera/localbench) (sister project) for an agentic benchmark with the same authoring conventions.
+- Anything agentic — that's the scope of `localbench`, a planned sibling project currently in design. Not yet public. rhumb stays focused on standard quality benchmarks against published baselines.
 
 ## License
 
