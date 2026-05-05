@@ -109,6 +109,10 @@ def main() -> int:
         "num_concurrent": suite.get("num_concurrent", 4),
         "tokenizer_backend": "huggingface",
     }
+    # Suite-level timeout overrides aiohttp ClientTimeout(300), which was
+    # killing thinking-on generations >5min on Qwen 3 runs at concurrency 16.
+    if suite.get("timeout"):
+        model_args_dict["timeout"] = suite["timeout"]
     if model_cfg.get("instruct"):
         # NOTE: apply_chat_template and fewshot_as_multiturn must be passed as
         # TOP-LEVEL lm-eval CLI flags for local-chat-completions, not as model_args

@@ -15,3 +15,12 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+# Pin lm-eval to a main commit because release 0.4.11 still has the
+# api_models.py retry-handler bug that shadows real exceptions with
+# UnboundLocalError on `outputs` when the request fails before assignment.
+# The fix on main uses locals().get('outputs', '(no outputs)') and ships
+# diagnostic info instead of a confusing scope error. Re-pin (or drop the
+# override) when a release ≥ 0.4.12 lands containing the fix.
+[tool.uv.sources]
+lm-eval = { git = "https://github.com/EleutherAI/lm-evaluation-harness.git", rev = "243c5463f67231b945f6add5f525e599c080ef63" }

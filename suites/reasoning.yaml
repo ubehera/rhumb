@@ -13,9 +13,13 @@
 # Routes this suite to runners/quality_chat_lm_eval.py instead of the default.
 runner: chat_lm_eval
 
-# Default-on for thinking — this suite explicitly tests reasoning-mode
-# performance. CLI --thinking off can override for fair-no-think comparisons.
-force_thinking: true
+# Default-OFF for thinking as of 2026-05-05. With fewshot_as_multiturn
+# (required for chat-completions on instruct models), Qwen 3.6's chat template
+# strips <think> blocks from fewshot assistant turns but mandates them on the
+# final user turn. The model gets inconsistent patterns and emits a 61-char
+# stub instead of a real trace. Until upstream fix or FP8 quant swap, default
+# off; CLI --thinking on can override per-run for ad-hoc comparison.
+force_thinking: false
 
 quality:
   tasks:
@@ -23,7 +27,13 @@ quality:
     # Future: hendrycks_math (high-school competition), bbh (Big-Bench Hard generative subset)
   num_fewshot: 5
   limit: 200                 # smaller than standard.yaml's 500: thinking-on emits 5-10x more tokens, slowing wall
-  num_concurrent: 16         # smaller too: each request is longer, less benefit from high concurrency
+  num_concurrent: 4          # was 16; long thinking traces + aiohttp 300s default
+                             # caused mass mid-stream disconnects on Qwen 3 runs.
+                             # 4 keeps queue shallow enough that no request waits
+                             # past the timeout.
+  timeout: 1800              # passthrough to local-chat-completions model_args;
+                             # overrides aiohttp ClientTimeout(300) so 5+ minute
+                             # thinking-on generations don't get killed mid-stream.
   # gen_kwargs flow into lm-eval's --gen_kwargs and propagate to the chat-completions
   # request body. max_gen_toks=4096 lifts the default ~256 cap that was truncating
   # Qwen 3-family thinking blocks mid-stream (88% of Qwen 3 responses got cut off
