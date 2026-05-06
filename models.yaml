@@ -111,7 +111,13 @@ models:
       bottleneck. No `disable_thinking` — this entry exists specifically to test
       thinking-on behavior. Drift vs the AWQ entry's scores is the signal.
     baselines:
-      # Same official Qwen 3.6 baselines as the AWQ entry; FP8 should land
-      # closer to the published BF16 number than INT4 (~0-2pp lower vs ~2-5pp).
-      gsm8k: 0.90
-      hellaswag: 0.88
+      # GSM8K updated to measured-as-baseline 2026-05-06 after the chat-template
+      # asymmetry / chat_template_kwargs / 'Question:' stop saga resolved (see
+      # ~/notes/learnings/2026-05-05-qwen36-thinking-mode-debug-saga.md). The
+      # published 0.90 was likely non-thinking methodology; this measurement is
+      # thinking-on with single-turn fewshot + shim-injected enable_thinking +
+      # 'Question:' dropped from until-stops. n=200, stderr=0.011, 95% CI
+      # roughly [0.95, 0.99]. Use as regression anchor for the same config
+      # going forward; investigate if a future run drifts >5pp from 0.95.
+      gsm8k: 0.95                              # measured 0.975 thinking-on, conservative anchor
+      hellaswag: 0.88                          # still published estimate; not yet measured
