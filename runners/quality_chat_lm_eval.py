@@ -102,12 +102,20 @@ def main() -> int:
     # apply_chat_template/tokenizer args. We DO pass chat_template_kwargs in the
     # request body — vLLM forwards them to the tokenizer.
     base_url = endpoint_root + "/chat/completions"
+    # tokenizer_backend "none" routes lm-eval through its JsonChatStr path
+    # (messages sent as-is to vLLM, server-side template rendering). Required
+    # when chat_template_kwargs needs to take effect: lm-eval's "huggingface"
+    # backend renders the template client-side via tokenizer.apply_chat_template
+    # but silently DROPS chat_template_kwargs, so flags like enable_thinking
+    # never reach the local Jinja. With "none", vLLM does the rendering and
+    # chat_template_kwargs is honored end-to-end. Default "huggingface" matches
+    # lm-eval's standard recipe and works for Qwen 3 family.
     model_args_dict: dict = {
         "base_url": base_url,
         "model": model_cfg["model_id"],
         "tokenizer": model_cfg.get("tokenizer", model_cfg["model_id"]),
         "num_concurrent": suite.get("num_concurrent", 4),
-        "tokenizer_backend": "huggingface",
+        "tokenizer_backend": model_cfg.get("tokenizer_backend", "huggingface"),
     }
     # Suite-level timeout overrides aiohttp ClientTimeout(300), which was
     # killing thinking-on generations >5min on Qwen 3 runs at concurrency 16.
@@ -132,8 +140,16 @@ def main() -> int:
     raw_dir = out_path.parent / "lm_eval_chat_raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
 
+    # Route through a shim that monkey-patches LocalChatCompletion._create_payload
+    # to forward chat_template_kwargs into the request body. lm-eval (as of git
+    # main 243c5463) silently drops chat_template_kwargs from model_args on both
+    # client-side and server-side paths — see the shim docstring for details.
+    # The shim is a no-op when LM_EVAL_CHAT_TEMPLATE_KWARGS is unset, so it's safe
+    # for every model.
+    shim = REPO / "runners" / "_lm_eval_chat_template_kwargs_shim.py"
     cli = [
-        "lm_eval",
+        sys.executable,
+        str(shim),
         "--model", "local-chat-completions",
         "--model_args", model_args,
         "--tasks", ",".join(suite["tasks"]),
@@ -148,7 +164,16 @@ def main() -> int:
         "--log_samples",
     ]
     if model_cfg.get("instruct"):
-        cli.extend(["--apply_chat_template", "--fewshot_as_multiturn"])
+        cli.append("--apply_chat_template")
+        # lm-eval AUTO-ENABLES fewshot_as_multiturn when --apply_chat_template is
+        # set, so we must pass `false` explicitly to disable it. Qwen 3.6 opts
+        # out via models.yaml because its chat template strips <think> from
+        # fewshot assistant turns but mandates it on the final turn — the
+        # resulting asymmetry produces 61-char stub responses. Single-turn
+        # fewshot bundles all examples into one user message and sidesteps the
+        # per-turn asymmetry.
+        cli.extend(["--fewshot_as_multiturn",
+                    "true" if model_cfg.get("fewshot_as_multiturn", True) else "false"])
     if suite.get("limit") is not None:
         cli.extend(["--limit", str(suite["limit"])])
 
@@ -167,6 +192,18 @@ def main() -> int:
     print(f"[quality-chat] running: {' '.join(cli)}", flush=True)
 
     sub_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    # Pass chat_template_kwargs to the shim via env var (lm-eval drops it from
+    # the request payload otherwise — see the shim's docstring).
+    if model_cfg.get("instruct"):
+        sub_env["LM_EVAL_CHAT_TEMPLATE_KWARGS"] = json.dumps(
+            {"enable_thinking": thinking_on}
+        )
+    # Optional suite-level stop-sequence override. lm-eval's --gen_kwargs CLI
+    # parser splits on commas so it can't pass list values; we route the
+    # override through the shim instead. See suites/reasoning.yaml stop_override
+    # for the GSM8K thinking-mode 'Question:' problem.
+    if suite.get("stop_override"):
+        sub_env["LM_EVAL_STOP_OVERRIDE"] = json.dumps(suite["stop_override"])
     started_at = datetime.datetime.now(datetime.timezone.utc)
     t0 = time.perf_counter()
     rc = subprocess.run(cli, env=sub_env).returncode

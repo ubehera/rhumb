@@ -41,6 +41,17 @@ quality:
   # any GSM8K reasoning trace with comfortable headroom.
   gen_kwargs:
     max_gen_toks: 4096
+  # GSM8K's default `until` (stop sequences) includes 'Question:', which
+  # thinking-mode models naturally emit in their analysis phase ("**Question:**
+  # Janet's ducks lay 16 eggs...") and terminates generation at ~63 chars before
+  # any real reasoning. Override is applied by runners/_lm_eval_chat_template_kwargs_shim.py
+  # via the LM_EVAL_STOP_OVERRIDE env var (lm-eval's --gen_kwargs CLI parser
+  # can't handle list values containing commas, so we patch the payload instead).
+  # Verified via curl probe 2026-05-05: same payload, dropping 'Question:' from
+  # stops moved Qwen 3.6 from 22-token stub -> 1871-token correct reasoning.
+  stop_override:
+    - "</s>"
+    - "<|im_end|>"
 
 # Speed bench is shared with the standard runner — use suite=standard for speed.
 speed:

@@ -65,6 +65,8 @@ models:
     tokenizer: Qwen/Qwen3.6-27B                # use the official tokenizer
     instruct: true
     disable_thinking: true                       # same family as Qwen 3, same thinking-mode behavior expected
+    fewshot_as_multiturn: false                  # see qwen3.6-27b-fp8 for the why
+    tokenizer_backend: none                      # see qwen3.6-27b-fp8
     notes: |
       Qwen 3.6 27B Instruct, April 2026 release. Smaller than the previous-gen
       flagship (27B vs 32B) but Alibaba claims it ties Sonnet 4.6 on agentic
@@ -76,3 +78,40 @@ models:
       gsm8k: 0.90                              # methodology-adjusted estimate
       hellaswag: 0.88                          # conservative estimate
       # Per-MMLU-subject: measured-as-baseline once the standard run completes (TBD).
+
+  qwen3.6-27b-fp8:
+    endpoint: http://localhost:8000/v1
+    model_id: Qwen/Qwen3.6-27B-FP8             # official Qwen FP8 release; calibrated by Qwen
+    api_key_env: VLLM_API_KEY
+    tokenizer: Qwen/Qwen3.6-27B-FP8            # FP8 repo includes its own tokenizer/chat template
+    instruct: true
+    fewshot_as_multiturn: false                  # Qwen 3.6's chat template strips <think> from fewshot
+                                                 # assistant turns but mandates it on the final turn,
+                                                 # producing 61-char stub responses. Confirmed 2026-05-05
+                                                 # on both AWQ and FP8 quants (median resp = 61 chars,
+                                                 # exact match score 0.005). Bundling fewshot into one
+                                                 # user turn sidesteps the per-turn asymmetry.
+    tokenizer_backend: none                      # required so chat_template_kwargs (enable_thinking)
+                                                 # actually reaches the Jinja template. lm-eval's default
+                                                 # huggingface backend renders chat templates client-side
+                                                 # via tokenizer.apply_chat_template but silently DROPS
+                                                 # chat_template_kwargs — so enable_thinking=true/false
+                                                 # was a no-op for all earlier qwen3.6 runs. With "none",
+                                                 # lm-eval routes the messages array directly to vLLM and
+                                                 # vLLM applies the template server-side, where
+                                                 # chat_template_kwargs IS honored (verified via curl
+                                                 # probe 2026-05-05).
+    notes: |
+      Qwen 3.6 27B Instruct FP8, official Qwen quant (vs cyankiwi's community
+      AWQ-INT4). Added 2026-05-05 to test whether thinking-mode degradation on
+      qwen3.6-27b-awq was caused by AWQ calibration (cyankiwi quant calibrated
+      without thinking traces -> </think> token logit suppressed) or by the
+      chat-template fewshot asymmetry. FP8 keeps thinking traces in calibration
+      so a clean thinking-on run here would isolate the AWQ calibration as the
+      bottleneck. No `disable_thinking` — this entry exists specifically to test
+      thinking-on behavior. Drift vs the AWQ entry's scores is the signal.
+    baselines:
+      # Same official Qwen 3.6 baselines as the AWQ entry; FP8 should land
+      # closer to the published BF16 number than INT4 (~0-2pp lower vs ~2-5pp).
+      gsm8k: 0.90
+      hellaswag: 0.88

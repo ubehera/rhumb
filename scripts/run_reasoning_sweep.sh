@@ -37,6 +37,7 @@ declare -A MODEL_HF_ID=(
   [qwen-32b-awq]="Qwen/Qwen2.5-32B-Instruct-AWQ"
   [qwen3-32b-awq]="Qwen/Qwen3-32B-AWQ"
   [qwen3.6-27b-awq]="cyankiwi/Qwen3.6-27B-AWQ-INT4"
+  [qwen3.6-27b-fp8]="Qwen/Qwen3.6-27B-FP8"
 )
 
 DETACH="0"
