@@ -120,6 +120,20 @@ def main() -> int:
         "num_concurrent": suite.get("num_concurrent", 4),
         "tokenizer_backend": "huggingface",
     }
+    # batch_size is plumbed via the CLI flag (--batch_size) below, NOT via
+    # model_args, because lm-eval's CLI default is 1 and gets injected into
+    # additional_config; passing it in both raises TypeError "got multiple
+    # values for keyword argument 'batch_size'".
+    # max_length override: lm-eval's local-completions defaults to 2048 (see
+    # api_models.py:133), then subtracts 1 for the continuation slot, so any
+    # 5-shot prompt over ~2K tokens gets silently left-truncated. Long-stem
+    # benchmarks (MedXpertQA, etc.) blow past 2K easily. Models.yaml may set
+    # `max_length:` to match the served vLLM max_model_len; we don't auto-pull
+    # from /v1/models because the serving cap may be intentionally lower than
+    # the model's full context (memory, throughput). Default leaves lm-eval's
+    # 2048; set explicitly per model for medical/long-stem suites.
+    if model_cfg.get("max_length") is not None:
+        model_args_dict["max_length"] = int(model_cfg["max_length"])
     # Instruct/chat models: chat template wraps each request in <|im_start|>...
     # (only applied to loglikelihood tasks by lm-eval; generate_until ignores it,
     # see notes/learnings/2026-05-05-lm-eval-chat-template-limitation.md).
@@ -156,6 +170,21 @@ def main() -> int:
     if suite.get("limit") is not None:
         cli.extend(["--limit", str(suite["limit"])])
 
+    # Server-side batched prompts: lm-eval packs `batch_size` requests into
+    # one HTTP call (vLLM accepts prompt as list[list[int]]). Cuts HTTP
+    # round-trip overhead on long-fewshot MCQ sweeps. Lossless — just a
+    # payload-shape change. Default 1 (lm-eval's CLI default) preserves
+    # current behavior for suites that don't set it.
+    if suite.get("batch_size") is not None:
+        cli.extend(["--batch_size", str(suite["batch_size"])])
+
+    # Custom-task discovery: suites may declare `include_path: tasks` (relative
+    # to repo root) to surface task YAMLs that aren't packaged in lm-eval. Used
+    # by suites/medical_mcq.yaml for MedXpertQA — see tasks/medxpertqa/.
+    # Read from suite_yaml (top-level), not suite (which is suite_yaml["quality"]).
+    if suite_yaml.get("include_path"):
+        cli.extend(["--include_path", str(REPO / suite_yaml["include_path"])])
+
     print(f"[quality] running: {' '.join(cli)}", flush=True)
 
     sub_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
@@ -176,7 +205,13 @@ def main() -> int:
     raw = json.loads(candidates[0].read_text())
 
     baselines = model_cfg.get("baselines", {}) or {}
-    drift_threshold = 0.05
+    # Drift thresholds: suite-level default + optional per-task overrides.
+    # Per-task lets the medical_mcq suite tighten to 3pp on the high-n tasks
+    # (medxpertqa_text n=2455, medqa_4options n=1273, medmcqa n=4183) and
+    # widen to 7pp on the small MMLU subjects (n=100-272) where 5pp is below
+    # statistical resolution. See suites/medical_mcq.yaml drift_thresholds.
+    default_drift_threshold = suite.get("drift_threshold", 0.05)
+    per_task_drift = suite.get("drift_thresholds", {}) or {}
 
     tasks_summary = {}
     drift_warnings: list[str] = []
@@ -203,24 +238,25 @@ def main() -> int:
 
         baseline = baselines.get(task_name)
         if baseline is not None:
+            threshold = per_task_drift.get(task_name, default_drift_threshold)
             delta = score - baseline
             entry["baseline"] = baseline
             entry["delta"] = round(delta, 4)
-            entry["drift"] = abs(delta) > drift_threshold
+            entry["drift_threshold"] = threshold
+            entry["drift"] = abs(delta) > threshold
             if entry["drift"]:
                 sign = "+" if delta > 0 else ""
                 drift_warnings.append(
-                    f"  {task_name}: {score:.4f} (baseline {baseline:.4f}, {sign}{delta:.4f})"
+                    f"  {task_name}: {score:.4f} (baseline {baseline:.4f}, {sign}{delta:.4f}, threshold {threshold:.0%})"
                 )
         tasks_summary[task_name] = entry
 
     if drift_warnings:
-        print(f"[quality] WARNING: {len(drift_warnings)} task(s) drifted >"
-              f"{drift_threshold:.0%} from baseline:", file=sys.stderr)
+        print(f"[quality] WARNING: {len(drift_warnings)} task(s) drifted from baseline:", file=sys.stderr)
         for line in drift_warnings:
             print(line, file=sys.stderr)
     else:
-        print(f"[quality] all tasks within {drift_threshold:.0%} of baselines", flush=True)
+        print(f"[quality] all tasks within drift thresholds", flush=True)
 
     out = {
         "runner": "lm_eval",
@@ -231,7 +267,8 @@ def main() -> int:
         "suite": args.suite,
         "thinking": "on" if thinking_on else "off",
         "tasks": tasks_summary,
-        "drift_threshold": drift_threshold,
+        "drift_threshold_default": default_drift_threshold,
+        "drift_thresholds_per_task": per_task_drift,
         "drift_count": len(drift_warnings),
         "raw_output_dir": str(raw_dir),
         "wall_seconds": round(wall, 2),

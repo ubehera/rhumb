@@ -13,11 +13,22 @@
 #                ~ is expanded.
 #   description: free-text label (informational only).
 #
-# When the second box arrives (~2026-05-07 to 2026-05-11):
-#   1. Bring up vLLM on box-b (mirror ~/projects/vllm-server/serve.sh).
-#   2. Update box-b.base_url below to its reachable host:port.
-#   3. Create ~/.localbench/box-b.env with `VLLM_API_KEY_BOX_B=<key>`.
-#   4. Sanity check: ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint box-b
+# Activating box-b (no ConnectX-7 cable required for this — DP=2 mode):
+#   1. On box-b: bring up vLLM (mirror ~/projects/vllm-server/serve.sh; use a
+#      different VLLM_API_KEY in vllm.env — never share keys across boxes).
+#   2. Confirm reachable from box-a: `curl -fsS http://<box-b-host>:8000/v1/models`
+#      should return JSON with the served model id.
+#   3. Below: replace `box-b.local` with box-b's actual hostname or IP.
+#      mDNS-style `<host>.local` works if both boxes have Avahi; static
+#      `/etc/hosts` is more reliable. NOT 127.0.0.1 — runners run on box-a.
+#   4. Edit ~/.localbench/box-b.env (already templated, 0600) and replace
+#      REPLACE_WITH_BOX_B_API_KEY with box-b's actual key.
+#   5. Smoke test: ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint box-b
+#
+# The ConnectX-7 cable (arrives 2026-05-07) is for TP=2 distributed inference
+# — only needed for 70B+ models that can't fit in one box's 121 GiB. Today's
+# medical_mcq + healthbench workloads run in DP=2 (independent serving on
+# each box), which the configuration below already supports.
 
 endpoints:
   local:
@@ -30,11 +41,13 @@ endpoints:
     base_url: http://localhost:8000/v1
     api_key_env: VLLM_API_KEY
     env_file: ~/projects/vllm-server/vllm.env
-    description: "Primary GB10. Aliased to 'local' until box-b is online — both names exist so future cross-box runs read symmetrically (e.g. `--endpoint box-a` vs `--endpoint box-b`)."
+    description: "Primary GB10. Aliased to 'local' — both names exist so cross-box runs read symmetrically (e.g. `--endpoint box-a` vs `--endpoint box-b`)."
 
   box-b:
-    # PLACEHOLDERS — update when ConnectX-7 cluster comes online.
-    base_url: http://box-b.local:8000/v1
+    # Wired interface (enP7s7); box-b also has wifi at 192.168.4.33 but wired
+    # is ~15x faster for rsync/curl. Both interfaces serve the vLLM API since
+    # it binds 0.0.0.0:8000.
+    base_url: http://192.168.4.29:8000/v1
     api_key_env: VLLM_API_KEY_BOX_B
     env_file: ~/.localbench/box-b.env
-    description: "Second GB10. Hardware ETA 2026-05-07 to 2026-05-11. Update base_url + create env_file when ready."
+    description: "Second GB10 (edgexpert-7de5). Independent serving (DP=2) until ConnectX-7 cable arrives 2026-05-07."
