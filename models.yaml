@@ -138,14 +138,17 @@ models:
       this entry adds it to rhumb's drift-check infrastructure for the
       medical_mcq suite.
 
-      The published numbers below are from MedGemma technical report Table 3
-      (arxiv:2507.05201 v3) and explicitly use "test-time scaling" (best-of-N
-      / self-consistency). rhumb's quality_lm_eval.py uses single-pass
-      loglikelihood scoring — so EXPECT MEASURED NUMBERS 5-15PP BELOW the
-      published values, not as drift but as methodology gap. The
-      `_published_cot` entries below are reference-only (no auto drift-check
-      because no task is named `_published_cot`); fill in the bare task
-      entries with measured-as-baseline values after first run completes.
+      The `_published_cot` entries below are from MedGemma technical report
+      Table 3 (arxiv:2507.05201 v3) and use "test-time scaling" (best-of-N /
+      self-consistency). They are reference-only and are NOT drift-checked
+      (no rhumb task is named `_published_cot`).
+
+      The bare task entries are the MEASURED-AS-BASELINE values from rhumb's
+      first full medical_mcq run on box-b (2026-05-06 -> 2026-05-07,
+      single-pass loglikelihood, num_concurrent=8, max_length=8192). These
+      run 5-18pp below the published TTS numbers as a methodology fingerprint
+      (loglikelihood vs best-of-N), not drift. Future runs against this
+      model should match within drift_thresholds_per_task (3-7pp).
     baselines:
       # published (test-time scaling, T=0.0) — reference only, NOT drift-checked
       medqa_4options_published_cot: 0.877
@@ -160,18 +163,18 @@ models:
       medxpertqa_text_published_cot: 0.257
       afrimedqa_published_cot: 0.840          # informational; AfriMed-QA n=25 not in suite
 
-      # measured-as-baseline (filled in after first medical_mcq run; until
-      # then the runner skips drift-check for these tasks)
-      # medqa_4options: TBD
-      # medmcqa: TBD
-      # pubmedqa: TBD
-      # mmlu_anatomy: TBD
-      # mmlu_clinical_knowledge: TBD
-      # mmlu_college_biology: TBD
-      # mmlu_college_medicine: TBD
-      # mmlu_medical_genetics: TBD
-      # mmlu_professional_medicine: TBD
-      # medxpertqa_text: TBD
+      # measured-as-baseline (rhumb single-pass loglikelihood; first full run
+      # 2026-05-07 09:58 UTC; pubmedqa deliberately not in the suite — its
+      # bigbio loader needs trust_remote_code which we don't grant)
+      medqa_4options: 0.697
+      medmcqa: 0.563
+      mmlu_anatomy: 0.667
+      mmlu_clinical_knowledge: 0.785
+      mmlu_college_biology: 0.833
+      mmlu_college_medicine: 0.676
+      mmlu_medical_genetics: 0.740
+      mmlu_professional_medicine: 0.824
+      medxpertqa_text: 0.181
 
   medgemma-1.5-4b-fp8:
     endpoint: http://localhost:8000/v1
