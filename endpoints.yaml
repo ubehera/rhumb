@@ -50,4 +50,25 @@ endpoints:
     base_url: http://192.168.4.29:8000/v1
     api_key_env: VLLM_API_KEY_NODE_2
     env_file: ~/.localbench/node-2.env
-    description: "Second GB10 (edgexpert-7de5). Independent serving (DP=2) until ConnectX-7 cable arrives 2026-05-07."
+    description: "Second GB10 (edgexpert-7de5). Independent serving (DP=2)."
+
+  cluster-tp2:
+    # Multi-node tensor-parallel deployment via Ray + 200G ConnectX-7 fabric.
+    # Validated 2026-05-08 with Qwen3.5-122B-A10B-FP8 at 19.5 tok/s
+    # (--enforce-eager). Served from node-1 (rank 0); rank 1 lives on node-2
+    # transparently via Ray. Uses port 8765 (eugr image default), distinct
+    # from the systemd-managed single-box vLLM on port 8000.
+    #
+    # Bring up:
+    #   cd ~/projects/spark-vllm-docker
+    #   ./launch-cluster.sh -n 10.99.99.1,10.99.99.2 \
+    #     --launch-script qwen3.5-122b-fp8-tp2.sh -d
+    # Tear down:
+    #   ./launch-cluster.sh -n 10.99.99.1,10.99.99.2 stop
+    #
+    # API key currently empty (vLLM launch script does not pass --api-key).
+    # See ~/.localbench/cluster-tp2.env for the rationale + hardening recipe.
+    base_url: http://localhost:8765/v1
+    api_key_env: VLLM_API_KEY_CLUSTER_TP2
+    env_file: ~/.localbench/cluster-tp2.env
+    description: "Cluster TP=2 (node-1 rank 0 + node-2 rank 1). For 100B+ models that don't fit one box."

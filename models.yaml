@@ -122,6 +122,31 @@ models:
       gsm8k: 0.95                              # measured 0.975 thinking-on, conservative anchor
       hellaswag: 0.88                          # still published estimate; not yet measured
 
+  qwen3.5-122b-a10b-fp8-tp2:
+    # First model on rhumb that requires the cluster (TP=2). Pair this entry
+    # with --endpoint cluster-tp2 so the runner targets the multi-node deployment.
+    endpoint: http://localhost:8765/v1                # default — overridden by --endpoint cluster-tp2
+    model_id: Qwen/Qwen3.5-122B-A10B-FP8              # vLLM --served-model-name in the launch script
+    api_key_env: VLLM_API_KEY                         # see endpoints.yaml cluster-tp2 entry for the actual key
+    tokenizer: Qwen/Qwen3.5-122B-A10B-FP8             # tokenizer ships in the same repo
+    instruct: true
+    tokenizer_backend: none                            # same reason as qwen3.6-27b-fp8: route messages array
+                                                       # directly to vLLM so chat_template_kwargs reaches the
+                                                       # server-side template (lm-eval's default backend drops
+                                                       # them client-side)
+    fewshot_as_multiturn: false                        # Qwen 3.5 inherits the fewshot/think asymmetry from 3.6
+    notes: |
+      Qwen 3.5 122B-A10B FP8 (MoE: 122B total params, 10B active per token),
+      first model on rhumb requiring the cluster's TP=2 capacity. Memory
+      footprint at TP=2: rank 0 ~99 GiB, rank 1 ~86 GiB. Steady-state inference
+      ~19.5 tok/s with --enforce-eager (validated 2026-05-08). Run with
+      --endpoint cluster-tp2 to hit the multi-node deployment.
+    baselines:
+      # No prior measurement on this hardware — first runs become measured-as-baseline.
+      # Published Qwen 3.5 numbers: GSM8K thinking-on ~0.96, HellaSwag ~0.89.
+      gsm8k: 0.95                                # methodology-adjusted, thinking-on
+      hellaswag: 0.88                            # conservative estimate
+
   medgemma-27b-fp8:
     endpoint: http://localhost:8000/v1
     model_id: ig1/medgemma-27b-it-FP8-Dynamic   # community FP8 quant; no official Google FP8
