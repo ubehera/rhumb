@@ -56,9 +56,9 @@ Baselines belong to one of two registers:
 
 ## Multi-endpoint support
 
-`endpoints.yaml` registers logical names (e.g. `local`, `box-a`, `box-b`) → vLLM URLs + auth config. Use `--endpoint <name>` to target a specific server; results write to `results/<model>/<date>/<endpoint>/` so parallel runs against different boxes don't clobber.
+`endpoints.yaml` registers logical names (e.g. `local`, `node-1`, `node-2`) → vLLM URLs + auth config. Use `--endpoint <name>` to target a specific server; results write to `results/<model>/<date>/<endpoint>/` so parallel runs against different boxes don't clobber.
 
-When you have two boxes, this enables data-parallel cross-model comparisons: e.g. Qwen 2.5 on `box-a` and Qwen 3 on `box-b` running simultaneously.
+When you have two boxes, this enables data-parallel cross-model comparisons: e.g. Qwen 2.5 on `node-1` and Qwen 3 on `node-2` running simultaneously.
 
 ## What's not included
 

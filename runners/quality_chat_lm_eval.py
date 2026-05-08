@@ -70,7 +70,7 @@ def main() -> int:
     p.add_argument("--endpoint", default=None,
                    help="Logical endpoint name (informational; stamped in output JSON). Typically passed by run.sh after endpoints.yaml resolution.")
     p.add_argument("--base-url", dest="base_url", default=None,
-                   help="OpenAI-compatible base URL (e.g. http://box-b.local:8000/v1). Overrides the model's `endpoint:` from models.yaml.")
+                   help="OpenAI-compatible base URL (e.g. http://node-2.local:8000/v1). Overrides the model's `endpoint:` from models.yaml.")
     args = p.parse_args()
 
     models = load_yaml(REPO / "models.yaml")["models"]

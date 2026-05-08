@@ -144,7 +144,7 @@ models:
       (no rhumb task is named `_published_cot`).
 
       The bare task entries are the MEASURED-AS-BASELINE values from rhumb's
-      first full medical_mcq run on box-b (2026-05-06 -> 2026-05-07,
+      first full medical_mcq run on node-2 (2026-05-06 -> 2026-05-07,
       single-pass loglikelihood, num_concurrent=8, max_length=8192). These
       run 5-18pp below the published TTS numbers as a methodology fingerprint
       (loglikelihood vs best-of-N), not drift. Future runs against this

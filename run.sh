@@ -9,7 +9,7 @@
 #   ./run.sh --model qwen3-32b-awq --suite reasoning --thinking on      # routes to chat runner
 #   ./run.sh --model qwen3-32b-awq --suite standard_q3 --thinking off
 #   ./run.sh --model qwen3.6-27b-awq --suite standard_q3 --detach       # survives parent exit
-#   ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint box-b     # target a specific vLLM
+#   ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint node-2     # target a specific vLLM
 #
 # Quality runner is auto-selected from the suite YAML's `runner:` field
 # (default: lm_eval). Suites with `runner: chat_lm_eval` use the
