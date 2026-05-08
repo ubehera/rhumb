@@ -52,6 +52,19 @@ endpoints:
     env_file: ~/.localbench/node-2.env
     description: "Second GB10 (edgexpert-7de5). Independent serving (DP=2)."
 
+  trtllm:
+    # TRT-LLM single-box deployment (NGC tensorrt-llm container, PyTorch backend).
+    # Validated 2026-05-08 with nvidia/Qwen3-32B-NVFP4 at 10.9 tok/s
+    # (--enforce-eager equivalent). Native NVFP4 GEMM via cutlass/cublaslt/cuda_core.
+    # Distinct port (8866) from vLLM (8000 systemd, 8765 cluster), so both
+    # stacks can run simultaneously when memory allows.
+    # Bring up: see ~/projects/cluster-tools/trtllm-server.sh (or run docker
+    # directly with the recipe in saga doc 2026-05-08).
+    base_url: http://localhost:8866/v1
+    api_key_env: VLLM_API_KEY_TRTLLM
+    env_file: ~/.localbench/trtllm.env
+    description: "TRT-LLM single-box (NGC container). For NVIDIA-blessed models with first-class sm_121 support."
+
   cluster-tp2:
     # Multi-node tensor-parallel deployment via Ray + 200G ConnectX-7 fabric.
     # Validated 2026-05-08 with Qwen3.5-122B-A10B-FP8 at 19.5 tok/s
