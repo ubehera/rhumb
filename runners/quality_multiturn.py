@@ -74,6 +74,7 @@ def run_conversation(client, url, headers, model_id, item, preserve, decoding, s
             "correct": correct,
             "prompt_tokens": usage.get("prompt_tokens", 0),
             "completion_tokens": usage.get("completion_tokens", 0),
+            "finish_reason": data["choices"][0].get("finish_reason"),
         })
         if is_final:
             final_correct = bool(correct)
@@ -131,6 +132,16 @@ def main() -> int:
     print(f"[multiturn] model={model_id} endpoint={args.endpoint or 'model-default'} base={url}", flush=True)
     print(f"[multiturn] conditions={conditions} samples={samples} concurrency={num_concurrent} decoding={decoding}", flush=True)
 
+    out_path = pathlib.Path(args.out).expanduser()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    ckpt = pathlib.Path(str(out_path) + ".partial.jsonl")
+
+    done_rows, done_keys = ml.load_checkpoint(ckpt)
+    rows = list(done_rows)
+    n_resumed = len(rows)
+    if n_resumed > 0:
+        print(f"[multiturn] resuming: {n_resumed} already-completed conversations loaded from checkpoint", flush=True)
+
     items = []
     with open(REPO / suite["dataset"]) as f:
         for line in f:
@@ -147,9 +158,14 @@ def main() -> int:
             preserve = cond == "on"
             for s in range(samples):
                 seed = seed_base + s  # shared across conditions for the same (item,s) => paired
+                if ml.job_key(item["id"], "on" if preserve else "off", seed) in done_keys:
+                    continue  # already completed in a previous run
                 jobs.append((item, preserve, seed))
 
-    rows = []
+    if n_resumed > 0:
+        print(f"[multiturn] {len(jobs)} conversations remaining after skipping {n_resumed} completed", flush=True)
+
+    new_rows_this_run: list[dict] = []
     started_at = datetime.datetime.now(datetime.timezone.utc)
     t0 = time.perf_counter()
     with httpx.Client() as client:
@@ -161,15 +177,22 @@ def main() -> int:
             for fut in cf.as_completed(futs):
                 ident = futs[fut]
                 try:
-                    rows.append(fut.result())
+                    row = fut.result()
+                    # Checkpoint immediately so a restart can resume from here
+                    with open(ckpt, "a") as ckpt_f:
+                        ckpt_f.write(json.dumps(row) + "\n")
+                        ckpt_f.flush()
+                    rows.append(row)
+                    new_rows_this_run.append(row)
                 except Exception as e:  # noqa: BLE001 — surface, do not retry (would duplicate generation)
                     print(f"[multiturn] FAILED {ident}: {type(e).__name__}: {e}", file=sys.stderr)
                 done += 1
                 if done % 20 == 0:
-                    print(f"[multiturn] {done}/{len(jobs)} conversations done", flush=True)
+                    print(f"[multiturn] {done}/{len(jobs)} conversations done this run", flush=True)
     wall = time.perf_counter() - t0
     finished_at = datetime.datetime.now(datetime.timezone.utc)
 
+    # Aggregate over all rows (preloaded from checkpoint + new this run)
     agg = ml.aggregate(rows)
     head = ml.headline(agg)
 
@@ -194,14 +217,13 @@ def main() -> int:
         "leakage_suspect_ids": sorted(set(leak)),
         "thinking_failure_ids": think_fail,
         "n_rows": len(rows),
-        "n_failed": len(jobs) - len(rows),
+        "n_resumed": n_resumed,
+        "n_failed": len(jobs) - len(new_rows_this_run),
         "per_row": rows,
         "wall_seconds": round(wall, 2),
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
     }
-    out_path = pathlib.Path(args.out).expanduser()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(out, indent=2, sort_keys=True))
     print(f"[multiturn] wrote {out_path}", flush=True)
     print(f"[multiturn] verdict={head['verdict']} "

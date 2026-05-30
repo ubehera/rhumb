@@ -101,6 +101,32 @@ def aggregate(rows: list[dict]) -> dict:
     return out
 
 
+def job_key(item_id: str, condition: str, seed: int) -> str:
+    return f"{item_id}|{condition}|{seed}"
+
+
+def load_checkpoint(path) -> tuple[list, set]:
+    """Read a JSONL checkpoint of completed conversation rows.
+    Returns (rows, set_of_job_keys). Missing file -> ([], set()). Skips blank/corrupt lines."""
+    import json
+    import pathlib
+    p = pathlib.Path(path)
+    if not p.exists():
+        return [], set()
+    rows = []
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            r = json.loads(line)
+        except Exception:
+            continue  # tolerate a half-written trailing line
+        rows.append(r)
+    keys = {job_key(r["id"], r["condition"], r["seed"]) for r in rows}
+    return rows, keys
+
+
 def headline(agg: dict) -> dict:
     def acc(cond, bucket):
         return agg.get(cond, {}).get(bucket, {}).get("accuracy")

@@ -98,3 +98,47 @@ def test_headline_incomplete_when_cell_missing():
     assert h["verdict"] == "incomplete"
     assert h["coupled_accuracy_delta_on_minus_off"] is None
     assert h["coupled_token_overhead_on_minus_off"] is None
+
+
+# ---------------------------------------------------------------------------
+# Tests for job_key and load_checkpoint (Part A)
+# ---------------------------------------------------------------------------
+
+def test_job_key_format():
+    key = ml.job_key("item42", "on", 3407)
+    assert key == "item42|on|3407"
+    key2 = ml.job_key("item42", "off", 3408)
+    assert key2 == "item42|off|3408"
+
+
+def test_load_checkpoint_missing_file(tmp_path):
+    rows, keys = ml.load_checkpoint(tmp_path / "nonexistent.jsonl")
+    assert rows == []
+    assert keys == set()
+
+
+def test_load_checkpoint_roundtrip(tmp_path):
+    import json
+    ckpt = tmp_path / "run.partial.jsonl"
+    row1 = {"id": "item1", "condition": "on", "seed": 3407, "correct": True}
+    row2 = {"id": "item2", "condition": "off", "seed": 3408, "correct": False}
+    ckpt.write_text(json.dumps(row1) + "\n" + json.dumps(row2) + "\n")
+    rows, keys = ml.load_checkpoint(ckpt)
+    assert len(rows) == 2
+    assert rows[0] == row1
+    assert rows[1] == row2
+    assert "item1|on|3407" in keys
+    assert "item2|off|3408" in keys
+    assert len(keys) == 2
+
+
+def test_load_checkpoint_skips_corrupt_trailing_line(tmp_path):
+    import json
+    ckpt = tmp_path / "run.partial.jsonl"
+    row1 = {"id": "itemA", "condition": "on", "seed": 3407, "correct": True}
+    # Last line is a truncated/corrupt write
+    ckpt.write_text(json.dumps(row1) + "\n" + "{bad json\n")
+    rows, keys = ml.load_checkpoint(ckpt)
+    assert len(rows) == 1
+    assert rows[0] == row1
+    assert "itemA|on|3407" in keys
