@@ -24,3 +24,6 @@ package = false
 # override) when a release ≥ 0.4.12 lands containing the fix.
 [tool.uv.sources]
 lm-eval = { git = "https://github.com/EleutherAI/lm-evaluation-harness.git", rev = "243c5463f67231b945f6add5f525e599c080ef63" }
+
+[dependency-groups]
+dev = ["pytest>=8"]
