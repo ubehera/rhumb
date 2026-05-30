@@ -108,8 +108,19 @@ def headline(agg: dict) -> dict:
     def tok(cond, bucket):
         return agg.get(cond, {}).get(bucket, {}).get("mean_total_tokens")
 
-    coupled_delta = (acc("on", "coupled") or 0.0) - (acc("off", "coupled") or 0.0)
-    control_delta = (acc("on", "control") or 0.0) - (acc("off", "control") or 0.0)
+    cells = [acc("on", "coupled"), acc("off", "coupled"), acc("on", "control"), acc("off", "control")]
+    if any(c is None for c in cells):
+        # A condition x bucket has no data (e.g. all conversations wedged/failed).
+        # Do NOT emit a real verdict — "no data" is not "measured 0%".
+        return {
+            "coupled_accuracy_delta_on_minus_off": None,
+            "control_accuracy_delta_on_minus_off": None,
+            "coupled_minus_control_delta": None,
+            "coupled_token_overhead_on_minus_off": None,
+            "verdict": "incomplete",
+        }
+    coupled_delta = acc("on", "coupled") - acc("off", "coupled")
+    control_delta = acc("on", "control") - acc("off", "control")
     net = coupled_delta - control_delta
     if net > 0.02:
         verdict = "helps_when_coupled"
@@ -121,8 +132,6 @@ def headline(agg: dict) -> dict:
         "coupled_accuracy_delta_on_minus_off": round(coupled_delta, 4),
         "control_accuracy_delta_on_minus_off": round(control_delta, 4),
         "coupled_minus_control_delta": round(net, 4),
-        "coupled_token_overhead_on_minus_off": (
-            round((tok("on", "coupled") or 0.0) - (tok("off", "coupled") or 0.0), 1)
-        ),
+        "coupled_token_overhead_on_minus_off": round((tok("on", "coupled") or 0.0) - (tok("off", "coupled") or 0.0), 1),
         "verdict": verdict,
     }

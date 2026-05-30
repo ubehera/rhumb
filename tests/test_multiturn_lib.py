@@ -85,3 +85,16 @@ def test_headline_deltas():
     assert round(h["control_accuracy_delta_on_minus_off"], 4) == 0.0
     assert round(h["coupled_token_overhead_on_minus_off"], 1) == 180.0
     assert h["verdict"] in {"helps_when_coupled", "no_effect", "hurts"}
+
+
+def test_headline_incomplete_when_cell_missing():
+    # on/coupled has zero rows (e.g. all wedged) -> must NOT report a real verdict
+    agg = {
+        "off": {"coupled": {"accuracy": 0.6, "mean_total_tokens": 300.0},
+                "control": {"accuracy": 0.9, "mean_total_tokens": 280.0}},
+        "on": {"control": {"accuracy": 0.9, "mean_total_tokens": 460.0}},
+    }
+    h = ml.headline(agg)
+    assert h["verdict"] == "incomplete"
+    assert h["coupled_accuracy_delta_on_minus_off"] is None
+    assert h["coupled_token_overhead_on_minus_off"] is None

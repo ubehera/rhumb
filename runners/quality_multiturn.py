@@ -175,6 +175,8 @@ def main() -> int:
 
     leak = [r["id"] for r in rows
             if r["bucket"] == "coupled" and r["turns"] and r["turns"][0]["visible_chars"] > 40]
+    think_fail = sorted({r["id"] for r in rows
+                         if any(t["reasoning_chars"] == 0 for t in r["turns"])})
     out = {
         "runner": "multiturn_chat",
         "model": args.model,
@@ -190,6 +192,7 @@ def main() -> int:
         "summary": agg,
         "headline": head,
         "leakage_suspect_ids": sorted(set(leak)),
+        "thinking_failure_ids": think_fail,
         "n_rows": len(rows),
         "n_failed": len(jobs) - len(rows),
         "per_row": rows,
@@ -207,6 +210,8 @@ def main() -> int:
           f"token_overhead={head['coupled_token_overhead_on_minus_off']}", flush=True)
     if leak:
         print(f"[multiturn] WARNING: {len(set(leak))} coupled items show long turn-1 answers (possible leakage): {sorted(set(leak))}", file=sys.stderr)
+    if think_fail:
+        print(f"[multiturn] WARNING: {len(think_fail)} items had a turn with EMPTY reasoning (thinking didn't fire; preserve is inert there): {think_fail}", file=sys.stderr)
     return 0
 
 
