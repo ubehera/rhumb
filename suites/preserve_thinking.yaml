@@ -25,14 +25,14 @@ quality:
     temperature: 0.6           # Qwen thinking-mode recommendation
     top_p: 0.95
     top_k: 20
-    # KEEP 4096 — do NOT lower. Verified 2026-05-29: with preserve_thinking=ON the
-    # model thinks longer (it knows <think> persists); ON turn-0 of the train item
-    # TRUNCATED at 2048 (finish=length, 0 visible chars -> extract_answer=None ->
-    # graded wrong), but COMPLETED cleanly at 4096 (finish=stop, 1996 comp_tok).
-    # 2048 would asymmetrically depress the ON arm and confound the A/B. The smoke
-    # wedge was LOAD-induced (concurrency), not per-request length: no turn neared
-    # 4096. So cap concurrency, NOT generation.
-    max_tokens: 4096
+    # 16384 (raised from 4096 per user 2026-05-29): generous headroom so NO reasoning
+    # trace truncates. preserve_thinking=ON makes the model think longer; 2048 truncated
+    # the ON arm (finish=length -> extract_answer=None -> graded wrong), asymmetrically
+    # confounding the A/B. finish_reason guard backs this up. The wedge is the EAGLE
+    # cross-node verify-broadcast (eagle_info_v2.py:469), NOT per-request length, so a
+    # bigger cap doesn't worsen it; native ctx is 256K, so 16K completion is trivial and
+    # only bites a runaway loop.
+    max_tokens: 16384
   # limit removed — full run is 24 items x 2 conditions x 5 samples = 240 convs.
   # (was `limit: 2` smoke cap.)
 
