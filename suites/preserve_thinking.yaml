@@ -1,0 +1,30 @@
+# preserve_thinking probe — measures Qwen3.6 preserve_thinking ON vs OFF on
+# genuine multi-turn conversations. Routes to runners/quality_multiturn.py.
+# See docs/specs/2026-05-29-preserve-thinking-probe-design.md.
+runner: multiturn_chat
+
+# Thinking is always ON for this probe (preserve is meaningless otherwise);
+# the runner enforces it. force_thinking is informational here.
+force_thinking: true
+
+quality:
+  dataset: tasks/preserve_thinking/items.jsonl
+  conditions: [off, on]        # preserve_thinking false / true
+  samples: 5                   # samples per item per condition; paired seeds across conditions
+  seed_base: 3407
+  # 35B-A3B TP=2 cross-node wedges at 5+ concurrent long-output requests
+  # (feedback_sglang_5concurrent_wedge_unsustainable). Keep this at 2.
+  num_concurrent: 2
+  timeout: 600                 # thinking-on multi-turn can take minutes/turn
+  decoding:
+    temperature: 0.6           # Qwen thinking-mode recommendation
+    top_p: 0.95
+    top_k: 20
+    max_tokens: 4096
+  # limit: 2                   # uncomment for a smoke run
+
+# Speed bench unused for this probe — always run with `--only quality`.
+speed:
+  num_prompts: 1
+  output_tokens: 1
+  concurrency_levels: [1]

@@ -166,10 +166,11 @@ fi
 RUNNER="$(python3 -c "import yaml,sys; d=yaml.safe_load(open('$SUITE_YAML')); print(d.get('runner','lm_eval'))")"
 
 case "$RUNNER" in
-  lm_eval)      QUALITY_OUT="$OUT_DIR/quality.json";       QUALITY_SCRIPT="quality_lm_eval.py";;
-  chat_lm_eval) QUALITY_OUT="$OUT_DIR/quality_chat.json";  QUALITY_SCRIPT="quality_chat_lm_eval.py";;
-  vlmeval)      QUALITY_OUT="$OUT_DIR/quality_vlm.json";   QUALITY_SCRIPT="quality_vlmeval.py";;
-  *) echo "unknown runner '$RUNNER' in $SUITE_YAML (expected lm_eval, chat_lm_eval, or vlmeval)" >&2; exit 1;;
+  lm_eval)        QUALITY_OUT="$OUT_DIR/quality.json";            QUALITY_SCRIPT="quality_lm_eval.py";;
+  chat_lm_eval)   QUALITY_OUT="$OUT_DIR/quality_chat.json";       QUALITY_SCRIPT="quality_chat_lm_eval.py";;
+  vlmeval)        QUALITY_OUT="$OUT_DIR/quality_vlm.json";        QUALITY_SCRIPT="quality_vlmeval.py";;
+  multiturn_chat) QUALITY_OUT="$OUT_DIR/quality_multiturn.json";  QUALITY_SCRIPT="quality_multiturn.py";;
+  *) echo "unknown runner '$RUNNER' in $SUITE_YAML (expected lm_eval, chat_lm_eval, vlmeval, or multiturn_chat)" >&2; exit 1;;
 esac
 
 # Write a meta.json describing this run.
