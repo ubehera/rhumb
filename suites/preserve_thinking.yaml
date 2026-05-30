@@ -9,19 +9,32 @@ force_thinking: true
 
 quality:
   dataset: tasks/preserve_thinking/items.jsonl
-  conditions: [off, on]        # preserve_thinking false / true
+  conditions: ["off", "on"]    # MUST quote — bare off/on are YAML booleans (would silently disable the ON arm)
   samples: 5                   # samples per item per condition; paired seeds across conditions
   seed_base: 3407
-  # 35B-A3B TP=2 cross-node wedges at 5+ concurrent long-output requests
-  # (feedback_sglang_5concurrent_wedge_unsustainable). Keep this at 2.
-  num_concurrent: 2
+  # CONCURRENCY 1 (was 2): the wedge is a blocked NEXTN cross-node sync iteration
+  # whose probability scales with simultaneous verify-heavy decode chains. The
+  # 2026-05-29 smoke wedged at 2 (the runner phase-locks two near-identical
+  # same-item samples). 1 = exactly one verify/copy chain per scheduler iter, the
+  # stable band (feedback_sglang_5concurrent_wedge_unsustainable,
+  # feedback_detokenizer_thread_stall_wedge). Determinism unaffected: seed binds
+  # to (item,sample) at quality_multiturn.py:149, order-independent.
+  num_concurrent: 1
   timeout: 600                 # thinking-on multi-turn can take minutes/turn
   decoding:
     temperature: 0.6           # Qwen thinking-mode recommendation
     top_p: 0.95
     top_k: 20
+    # KEEP 4096 — do NOT lower. Verified 2026-05-29: with preserve_thinking=ON the
+    # model thinks longer (it knows <think> persists); ON turn-0 of the train item
+    # TRUNCATED at 2048 (finish=length, 0 visible chars -> extract_answer=None ->
+    # graded wrong), but COMPLETED cleanly at 4096 (finish=stop, 1996 comp_tok).
+    # 2048 would asymmetrically depress the ON arm and confound the A/B. The smoke
+    # wedge was LOAD-induced (concurrency), not per-request length: no turn neared
+    # 4096. So cap concurrency, NOT generation.
     max_tokens: 4096
-  # limit: 2                   # uncomment for a smoke run
+  # limit removed — full run is 24 items x 2 conditions x 5 samples = 240 convs.
+  # (was `limit: 2` smoke cap.)
 
 # Speed bench unused for this probe — always run with `--only quality`.
 speed:
