@@ -36,3 +36,18 @@ def test_grade_exact_match():
     assert ml.grade("1,50", "150") is False
     assert ml.grade("150.0", 150) is True
     assert ml.grade(None, "150") is False
+
+
+def test_reconstruct_with_reasoning_embeds_think():
+    out = ml.reconstruct_assistant_content("step 1\nstep 2", "150")
+    assert out == "<think>\nstep 1\nstep 2\n</think>\n\n150"
+
+
+def test_reconstruct_without_reasoning_is_plain():
+    assert ml.reconstruct_assistant_content("", "150") == "150"
+    assert ml.reconstruct_assistant_content(None, " 150 ") == "150"
+
+
+def test_ctk_builder_forces_thinking_on():
+    assert ml.build_chat_template_kwargs(False) == {"enable_thinking": True, "preserve_thinking": False}
+    assert ml.build_chat_template_kwargs(True) == {"enable_thinking": True, "preserve_thinking": True}

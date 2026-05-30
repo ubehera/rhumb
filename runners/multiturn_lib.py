@@ -53,3 +53,16 @@ def grade(pred: str | None, expected) -> bool:
     if pred is None:
         return False
     return _norm_num(pred) == _norm_num(expected)
+
+
+def reconstruct_assistant_content(reasoning: str | None, content: str | None) -> str:
+    """Rebuild the assistant turn so its <think> is present in history. The
+    Qwen3.6 template then keeps it (preserve_thinking=true) or strips it (false)."""
+    content = (content or "").strip()
+    if reasoning and reasoning.strip():
+        return f"<think>\n{reasoning.strip()}\n</think>\n\n{content}"
+    return content
+
+
+def build_chat_template_kwargs(preserve: bool) -> dict:
+    return {"enable_thinking": True, "preserve_thinking": bool(preserve)}
