@@ -27,9 +27,9 @@ Outputs a single JSON file with the standardized rhumb schema:
     }
 
 Usage:
-    python runners/quality_lm_eval.py --model qwen-32b-awq --suite standard \\
-        --out results/qwen-32b-awq/2026-05-05/quality.json
-    python runners/quality_lm_eval.py --model qwen3-32b-awq --suite standard_q3 \\
+    python runners/quality_lm_eval.py --model qwen3.6-35b-a3b-nvfp4 --suite standard \\
+        --out results/qwen3.6-35b-a3b-nvfp4/2026-05-05/quality.json
+    python runners/quality_lm_eval.py --model qwen3.6-35b-a3b-fp8 --suite standard_q3 \\
         --thinking off --out ...
 """
 from __future__ import annotations

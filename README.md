@@ -19,13 +19,10 @@ Most lm-evaluation-harness wrappers report numbers in isolation. Three silent-fa
 uv sync
 
 # Loglikelihood-scored standard suite (MMLU subjects + HellaSwag)
-./run.sh --model qwen3.6-27b-awq --suite standard --thinking off --detach
+./run.sh --model qwen3.6-35b-a3b-nvfp4 --suite standard --thinking off --detach
 
 # Generative reasoning suite (GSM8K via /v1/chat/completions, thinking on)
-./run.sh --model qwen3.6-27b-awq --suite reasoning --thinking on --detach
-
-# Multi-model sweep with automatic vLLM model swap between runs
-./scripts/run_reasoning_sweep.sh --detach
+./run.sh --model qwen3.6-35b-a3b-nvfp4 --suite reasoning --thinking on --detach
 ```
 
 Results land in `results/<model>/<date>/` (or `results/<model>/<date>/<endpoint>/` if `--endpoint` is set).
@@ -38,7 +35,6 @@ Results land in `results/<model>/<date>/` (or `results/<model>/<date>/<endpoint>
 | `runners/quality_lm_eval.py` | Wraps lm-eval-harness for loglikelihood-scored multi-choice tasks (MMLU, HellaSwag, ARC). |
 | `runners/quality_chat_lm_eval.py` | Sister runner for generative tasks (GSM8K, MATH, IFEval) via `/v1/chat/completions`. Necessary because `local-completions` doesn't apply chat templates to generative tasks. |
 | `runners/speed_serving.py` | TTFT / ITL / throughput sweep across concurrency levels. |
-| `scripts/run_reasoning_sweep.sh` | Orchestrates multi-model runs with automatic vLLM model swap between models. |
 | `models.yaml` | Model registry with per-task baselines for drift-check. |
 | `endpoints.yaml` | Logical endpoint registry for multi-vLLM-server topologies. |
 | `suites/` | Task collections (`quick`, `standard`, `standard_q3`, `reasoning`, `full`). |

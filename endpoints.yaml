@@ -23,7 +23,7 @@
 #      `/etc/hosts` is more reliable. NOT 127.0.0.1 — runners run on node-1.
 #   4. Edit ~/.localbench/node-2.env (already templated, 0600) and replace
 #      REPLACE_WITH_NODE_2_API_KEY with node-2's actual key.
-#   5. Smoke test: ./run.sh --model qwen3.6-27b-awq --suite quick --endpoint node-2
+#   5. Smoke test: ./run.sh --model qwen3.6-27b-fp8 --suite quick --endpoint node-2
 #
 # The ConnectX-7 cable (arrives 2026-05-07) is for TP=2 distributed inference
 # — only needed for 70B+ models that can't fit in one box's 121 GiB. Today's
@@ -64,6 +64,32 @@ endpoints:
     api_key_env: VLLM_API_KEY_TRTLLM
     env_file: ~/.localbench/trtllm.env
     description: "TRT-LLM single-box (NGC container). For NVIDIA-blessed models with first-class sm_121 support."
+
+  ollama-cloud:
+    # Third-family judge endpoint for VLM benchmarks (MMBench, MathVista) that
+    # need an LLM to extract MCQ choices from free-form model output. Hosted
+    # on Ollama Cloud; pricing is subscription ($20/mo Pro), not per-token.
+    # Default judge model: kimi-k2.6 (Moonshot family — third-family-compliant
+    # against Qwen, Gemma, Llama models under test). Pair with rhumb VLM suite
+    # via `judge:` block in the suite YAML.
+    base_url: https://ollama.com/v1
+    api_key_env: OLLAMA_API_KEY
+    env_file: ~/.localbench/ollama.env
+    description: "Ollama Cloud (judge-only). Kimi K2.6 etc. for third-family answer-extraction."
+
+  sglang-tp2:
+    # SGLang cross-node TP=2 via the sglang-qwen36-27b-tp2.service systemd unit.
+    # Serves Qwen3.6-27B-FP8 with multimodal (vision) + NEXTN MTP k=3 +
+    # 256K context, validated 2026-05-14 per project_qwen36_27b_tp2_nextn_recipe.
+    # Port 30000 is SGLang's default; distinct from vLLM (8000) and vLLM-cluster
+    # (8765) so both stacks can coexist.
+    #
+    # First multimodal-serving endpoint registered with rhumb. Use with --endpoint
+    # sglang-tp2 for VLM evaluation (suites/vlm_static.yaml, vlm_smoke.yaml).
+    base_url: http://localhost:30000/v1
+    api_key_env: SGLANG_API_KEY
+    env_file: ~/projects/sglang-server/sglang.env
+    description: "SGLang cluster TP=2 (node-1 rank 0 + node-2 rank 1). Multimodal-enabled, Qwen3.6-27B-FP8 + NEXTN."
 
   cluster-tp2:
     # Multi-node tensor-parallel deployment via Ray + 200G ConnectX-7 fabric.

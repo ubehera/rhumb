@@ -23,7 +23,7 @@ Outputs match the quality_lm_eval.py schema for diff.py compatibility:
     }
 
 Usage:
-    python runners/quality_chat_lm_eval.py --model qwen3-32b-awq \\
+    python runners/quality_chat_lm_eval.py --model qwen3.6-35b-a3b-nvfp4 \\
         --suite reasoning --thinking on --out results/.../reasoning.json
 """
 from __future__ import annotations

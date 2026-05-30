@@ -4,7 +4,7 @@ Each input is a results/<model>/<date>/ directory containing quality.json and/or
 speed.json. The output is a comparison table showing per-metric deltas.
 
 Usage:
-    python diff.py results/qwen-32b-awq/2026-05-04 results/qwen-32b-bf16/2026-05-04
+    python diff.py results/qwen3.6-35b-a3b-nvfp4/2026-05-17 results/qwen3.6-35b-a3b-fp8/2026-05-17
 """
 from __future__ import annotations
 
