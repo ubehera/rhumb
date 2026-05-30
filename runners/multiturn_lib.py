@@ -66,3 +66,63 @@ def reconstruct_assistant_content(reasoning: str | None, content: str | None) ->
 
 def build_chat_template_kwargs(preserve: bool) -> dict:
     return {"enable_thinking": True, "preserve_thinking": bool(preserve)}
+
+
+def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
+    return (max(0.0, centre - half), min(1.0, centre + half))
+
+
+def aggregate(rows: list[dict]) -> dict:
+    """rows: per-(item,condition,sample) dicts with keys
+    condition, bucket, correct(bool), prompt_tokens, total_tokens."""
+    groups: dict = defaultdict(list)
+    for r in rows:
+        groups[(r["condition"], r["bucket"])].append(r)
+    out: dict = {}
+    for (cond, bucket), rs in groups.items():
+        n = len(rs)
+        k = sum(1 for r in rs if r["correct"])
+        lo, hi = wilson_ci(k, n)
+        out.setdefault(cond, {})[bucket] = {
+            "accuracy": round(k / n, 4) if n else None,
+            "ci_low": round(lo, 4),
+            "ci_high": round(hi, 4),
+            "n": n,
+            "n_correct": k,
+            "mean_prompt_tokens": round(statistics.mean(r["prompt_tokens"] for r in rs), 1) if n else None,
+            "mean_total_tokens": round(statistics.mean(r["total_tokens"] for r in rs), 1) if n else None,
+        }
+    return out
+
+
+def headline(agg: dict) -> dict:
+    def acc(cond, bucket):
+        return agg.get(cond, {}).get(bucket, {}).get("accuracy")
+
+    def tok(cond, bucket):
+        return agg.get(cond, {}).get(bucket, {}).get("mean_total_tokens")
+
+    coupled_delta = (acc("on", "coupled") or 0.0) - (acc("off", "coupled") or 0.0)
+    control_delta = (acc("on", "control") or 0.0) - (acc("off", "control") or 0.0)
+    net = coupled_delta - control_delta
+    if net > 0.02:
+        verdict = "helps_when_coupled"
+    elif coupled_delta < -0.02:
+        verdict = "hurts"
+    else:
+        verdict = "no_effect"
+    return {
+        "coupled_accuracy_delta_on_minus_off": round(coupled_delta, 4),
+        "control_accuracy_delta_on_minus_off": round(control_delta, 4),
+        "coupled_minus_control_delta": round(net, 4),
+        "coupled_token_overhead_on_minus_off": (
+            round((tok("on", "coupled") or 0.0) - (tok("off", "coupled") or 0.0), 1)
+        ),
+        "verdict": verdict,
+    }
