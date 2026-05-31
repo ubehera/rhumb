@@ -1,0 +1,21 @@
+# preserve_thinking CALIBRATION suite — OFF-ONLY pass over the harder candidate
+# pool (tasks/preserve_thinking/items_v2_candidates.jsonl) to measure per-item
+# OFF accuracy. Goal: keep coupled items whose OFF accuracy lands sub-ceiling
+# (~0.3-0.8) so the real A/B can discriminate; drop items the model aces at OFF
+# (no headroom) or fails entirely at OFF (turn-1 itself too hard / unstable).
+# Routes to runners/quality_multiturn.py. Same decoding as the real probe.
+runner: multiturn_chat
+force_thinking: true
+
+quality:
+  dataset: tasks/preserve_thinking/items_v2_candidates.jsonl
+  conditions: ["off"]          # OFF-only — this is calibration, not the A/B
+  samples: 5                   # per item; per-item OFF acc resolves to {0,.2,.4,.6,.8,1.0}
+  seed_base: 3407
+  num_concurrent: 1            # node-2 thermal/wedge safety (see real suite rationale)
+  timeout: 600
+  decoding:
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    max_tokens: 16384

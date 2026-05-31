@@ -1,0 +1,35 @@
+# Judge-graded preserve_thinking probe — REALISTIC open-ended coupled tasks.
+# Tests whether access to turn-1's preserved REASONING (vs only its visible
+# terse conclusion) improves turn-2 quality, scored 1-10 by a third-family judge
+# (Kimi K2.6 / Moonshot, blind to condition). Routes to quality_multiturn_judge.py.
+# This is the regime the exact-match probe can't reach (deterministic
+# intermediates are recomputable from the visible prompt).
+runner: multiturn_judge
+force_thinking: true
+
+quality:
+  dataset: tasks/preserve_thinking/items_judge.jsonl
+  conditions: ["off", "on"]    # MUST quote — bare off/on are YAML booleans
+  samples: 3                   # 8 coupled x 3 = 24 paired deltas (minus empty-turn-1 exclusions)
+  seed_base: 3407
+  # concurrency 2: streaming removed the detokenizer wedge; the -lgc 1500 cap bounds
+  # node-2 power so peak heat is clock-bound (same as concurrency 1), and 2 ~halves
+  # wall time on these long-thinking open-ended items. Within the safe 1-3 band for
+  # the 27B-FP8 daily driver (the 5-concurrent wedge is a 35B-A3B/256K finding).
+  num_concurrent: 2
+  timeout: 600
+  decoding:
+    temperature: 0.6           # Qwen thinking-mode recommendation
+    top_p: 0.95
+    top_k: 20
+    max_tokens: 16384
+
+judge:
+  base_url: https://ollama.com/v1
+  model: kimi-k2.6             # Moonshot family — third-family vs Qwen under test
+  api_key_env: OLLAMA_API_KEY
+  env_file: ~/.localbench/ollama.env
+  samples: 3                   # judge calls per turn-2 answer (concurrent), averaged
+  temperature: 0.3
+  seed_base: 11
+  timeout: 180

@@ -1,0 +1,30 @@
+# Smoke for the judge-graded probe: 2 items x 2 conditions x 1 sample = 4 convs.
+# Validates the full pipeline (generate -> reconstruct think -> preserve A/B ->
+# judge parse) and judge engagement (parseable, non-saturated scores) before the
+# full run. Routes to quality_multiturn_judge.py.
+runner: multiturn_judge
+force_thinking: true
+
+quality:
+  dataset: tasks/preserve_thinking/items_judge.jsonl
+  conditions: ["off", "on"]
+  samples: 1
+  seed_base: 3407
+  num_concurrent: 1
+  timeout: 600
+  limit: 2
+  decoding:
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    max_tokens: 16384
+
+judge:
+  base_url: https://ollama.com/v1
+  model: kimi-k2.6
+  api_key_env: OLLAMA_API_KEY
+  env_file: ~/.localbench/ollama.env
+  samples: 2
+  temperature: 0.3
+  seed_base: 11
+  timeout: 180
